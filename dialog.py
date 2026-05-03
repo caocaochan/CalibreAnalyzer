@@ -7,7 +7,7 @@ from qt.core import (
     QAbstractItemView, QAbstractTableModel, QApplication, QComboBox, QDialog,
     QFileDialog, QFont, QFrame, QGroupBox, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QListWidget, QListWidgetItem, QModelIndex, QObject,
-    QProgressBar, QPushButton, QSize, QSortFilterProxyModel, QSplitter,
+    QProgressBar, QPushButton, QScrollArea, QSize, QSortFilterProxyModel, QSplitter,
     QTableView, QTabWidget, QTextEdit, QThread, Qt, QVBoxLayout, QWidget,
     pyqtSignal,
 )
@@ -170,7 +170,8 @@ class AnalysisDialog(QDialog):
         )
 
         self.setWindowTitle(f"Chinese Text Analysis — {title}")
-        self.setMinimumSize(QSize(980, 860))
+        self.setMinimumSize(QSize(760, 560))
+        self.resize(QSize(1100, 900))
 
         layout = QVBoxLayout(self)
         layout.setSpacing(6)
@@ -209,12 +210,18 @@ class AnalysisDialog(QDialog):
         self.stats_layout = QVBoxLayout(self.stats_widget)
         self.stats_layout.setSpacing(8)
         self.stats_layout.setContentsMargins(0, 0, 0, 0)
-        splitter.addWidget(self.stats_widget)
+        self.stats_scroll = QScrollArea()
+        self.stats_scroll.setWidgetResizable(True)
+        self.stats_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.stats_scroll.setWidget(self.stats_widget)
+        splitter.addWidget(self.stats_scroll)
 
         self.tabs = QTabWidget()
         self.tabs.currentChanged.connect(self._on_tab_changed)
         splitter.addWidget(self.tabs)
-        splitter.setSizes([400, 420])
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([320, 460])
 
         layout.addWidget(splitter, stretch=1)
 

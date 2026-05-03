@@ -1,0 +1,8 @@
+{
+    "name": "Chinese Character Analyzer",
+    "description": "Analyze Chinese books by character or word, with HSK coverage and Anki comparison.",
+    "version": [1, 0, 1],
+    "author": "CaoCao",
+    "minimum_calibre_version": [5, 0, 0],
+    "supported_platforms": ["windows", "osx", "linux"]
+}

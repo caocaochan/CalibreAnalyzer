@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.tmp
+ChineseCharacterAnalyzer-Calibre-Plugin*.zip

@@ -7,7 +7,7 @@ from qt.core import (
     QAbstractItemView, QAbstractTableModel, QApplication, QComboBox, QDialog,
     QFileDialog, QFont, QFrame, QGroupBox, QHBoxLayout, QHeaderView, QLabel,
     QLineEdit, QListWidget, QListWidgetItem, QModelIndex, QObject,
-    QProgressBar, QPushButton, QScrollArea, QSize, QSortFilterProxyModel, QSplitter,
+    QProgressBar, QPushButton, QScrollArea, QSize, QSortFilterProxyModel,
     QTableView, QTabWidget, QTextEdit, QThread, Qt, QVBoxLayout, QWidget,
     pyqtSignal,
 )
@@ -170,16 +170,28 @@ class AnalysisDialog(QDialog):
         )
 
         self.setWindowTitle(f"Chinese Text Analysis — {title}")
-        self.setMinimumSize(QSize(760, 560))
-        self.resize(QSize(1100, 900))
+        self.setMinimumSize(QSize(720, 520))
+        self.resize(QSize(1040, 840))
 
-        layout = QVBoxLayout(self)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setSpacing(0)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.content_scroll = QScrollArea()
+        self.content_scroll.setWidgetResizable(True)
+        self.content_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        outer_layout.addWidget(self.content_scroll)
+
+        content = QWidget()
+        self.content_scroll.setWidget(content)
+
+        layout = QVBoxLayout(content)
         layout.setSpacing(6)
-        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setContentsMargins(14, 10, 14, 10)
 
         header = QLabel(
-            f"<span style='font-family: Microsoft YaHei; font-size: 14pt; font-weight: bold;'>{title}</span>"
-            f"  <span style='color:gray; font-family: Microsoft YaHei; font-size: 10pt;'>{author} · {fmt}</span>"
+            f"<span style='font-family: Microsoft YaHei; font-size: 13pt; font-weight: bold;'>{title}</span>"
+            f"  <span style='color:gray; font-family: Microsoft YaHei; font-size: 9pt;'>{author} · {fmt}</span>"
         )
         header.setWordWrap(True)
         layout.addWidget(header)
@@ -203,27 +215,16 @@ class AnalysisDialog(QDialog):
         mode_row.addStretch()
         layout.addLayout(mode_row)
 
-        splitter = QSplitter(Qt.Orientation.Vertical)
-        splitter.setChildrenCollapsible(False)
-
         self.stats_widget = QWidget()
         self.stats_layout = QVBoxLayout(self.stats_widget)
-        self.stats_layout.setSpacing(8)
+        self.stats_layout.setSpacing(6)
         self.stats_layout.setContentsMargins(0, 0, 0, 0)
-        self.stats_scroll = QScrollArea()
-        self.stats_scroll.setWidgetResizable(True)
-        self.stats_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.stats_scroll.setWidget(self.stats_widget)
-        splitter.addWidget(self.stats_scroll)
+        layout.addWidget(self.stats_widget)
 
         self.tabs = QTabWidget()
         self.tabs.currentChanged.connect(self._on_tab_changed)
-        splitter.addWidget(self.tabs)
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([320, 460])
-
-        layout.addWidget(splitter, stretch=1)
+        self.tabs.setMinimumHeight(460)
+        layout.addWidget(self.tabs)
 
         btn_layout = QHBoxLayout()
 
@@ -584,7 +585,7 @@ class AnalysisDialog(QDialog):
     def _build_stats_panel(self):
         stats = self._current_stats()
         cards = QHBoxLayout()
-        cards.setSpacing(16)
+        cards.setSpacing(10)
 
         total_label = "Total Words" if self.mode == "word" else "Total Characters"
         unique_label = "Unique Words" if self.mode == "word" else "Unique Characters"
@@ -617,14 +618,14 @@ class AnalysisDialog(QDialog):
         frame = QFrame()
         frame.setFrameShape(QFrame.Shape.StyledPanel)
         frame.setStyleSheet(
-            "QFrame { background: palette(alternate-base); border-radius: 6px; padding: 6px; }"
+            "QFrame { background: palette(alternate-base); border-radius: 6px; padding: 4px; }"
         )
         inner = QVBoxLayout(frame)
-        inner.setSpacing(3)
-        inner.setContentsMargins(8, 4, 8, 4)
+        inner.setSpacing(2)
+        inner.setContentsMargins(6, 3, 6, 3)
 
         title = QLabel(f"<b>{title_text}</b>")
-        title.setFont(QFont("Microsoft YaHei", 10))
+        title.setFont(QFont("Microsoft YaHei", 9))
         inner.addWidget(title)
 
         bar_colors = [
@@ -636,7 +637,7 @@ class AnalysisDialog(QDialog):
             info = coverage["per_level"][level]
             cumulative = coverage["cumulative"][level]
             row = QHBoxLayout()
-            row.setSpacing(8)
+            row.setSpacing(6)
 
             if level == "1":
                 label_text = "HSK 1"
@@ -645,15 +646,15 @@ class AnalysisDialog(QDialog):
             else:
                 label_text = f"HSK 1–{level}"
             label = QLabel(label_text)
-            label.setFixedWidth(90)
-            label.setFont(QFont("Microsoft YaHei", 9, QFont.Weight.Bold))
+            label.setFixedWidth(80)
+            label.setFont(QFont("Microsoft YaHei", 8, QFont.Weight.Bold))
             row.addWidget(label)
 
             bar = QProgressBar()
             bar.setRange(0, 1000)
             bar.setValue(int(cumulative["pct"] * 10))
             bar.setTextVisible(False)
-            bar.setFixedHeight(14)
+            bar.setFixedHeight(12)
             bar.setStyleSheet(
                 f"QProgressBar {{ border: 1px solid palette(mid); border-radius: 4px; background: palette(base); }}"
                 f"QProgressBar::chunk {{ background: {bar_colors[i]}; border-radius: 3px; }}"
@@ -661,13 +662,13 @@ class AnalysisDialog(QDialog):
             row.addWidget(bar, stretch=1)
 
             pct_label = QLabel(f"{cumulative['pct']:5.1f}%  ({cumulative['count']})")
-            pct_label.setFixedWidth(140)
-            pct_label.setFont(QFont("Microsoft YaHei", 9))
+            pct_label.setFixedWidth(126)
+            pct_label.setFont(QFont("Microsoft YaHei", 8))
             row.addWidget(pct_label)
 
             new_label = QLabel(f"+{info['count']}")
-            new_label.setFixedWidth(70)
-            new_label.setFont(QFont("Microsoft YaHei", 9))
+            new_label.setFixedWidth(58)
+            new_label.setFont(QFont("Microsoft YaHei", 8))
             new_label.setStyleSheet("color: gray;")
             new_label.setToolTip(
                 f"This level alone adds {info['count']} {self._unit_label().lower()} ({info['pct']:.1f}%)"
@@ -677,10 +678,10 @@ class AnalysisDialog(QDialog):
             inner.addLayout(row)
 
         other_row = QHBoxLayout()
-        other_row.setSpacing(8)
+        other_row.setSpacing(6)
         other_label = QLabel("Other")
-        other_label.setFixedWidth(90)
-        other_label.setFont(QFont("Microsoft YaHei", 9, QFont.Weight.Bold))
+        other_label.setFixedWidth(80)
+        other_label.setFont(QFont("Microsoft YaHei", 8, QFont.Weight.Bold))
         other_label.setStyleSheet("color: gray;")
         other_row.addWidget(other_label)
 
@@ -688,7 +689,7 @@ class AnalysisDialog(QDialog):
         other_bar.setRange(0, 1000)
         other_bar.setValue(int(coverage["not_in_hsk_pct"] * 10))
         other_bar.setTextVisible(False)
-        other_bar.setFixedHeight(14)
+        other_bar.setFixedHeight(12)
         other_bar.setStyleSheet(
             "QProgressBar { border: 1px solid palette(mid); border-radius: 4px; background: palette(base); }"
             "QProgressBar::chunk { background: #9E9E9E; border-radius: 3px; }"
@@ -696,13 +697,13 @@ class AnalysisDialog(QDialog):
         other_row.addWidget(other_bar, stretch=1)
 
         other_pct = QLabel(f"{coverage['not_in_hsk_pct']:5.1f}%  ({coverage['not_in_hsk_count']})")
-        other_pct.setFixedWidth(140)
-        other_pct.setFont(QFont("Microsoft YaHei", 9))
+        other_pct.setFixedWidth(126)
+        other_pct.setFont(QFont("Microsoft YaHei", 8))
         other_pct.setStyleSheet("color: gray;")
         other_row.addWidget(other_pct)
 
         spacer = QLabel("")
-        spacer.setFixedWidth(70)
+        spacer.setFixedWidth(58)
         other_row.addWidget(spacer)
         inner.addLayout(other_row)
         return frame
@@ -711,18 +712,18 @@ class AnalysisDialog(QDialog):
         frame = QFrame()
         frame.setFrameShape(QFrame.Shape.StyledPanel)
         frame.setStyleSheet(
-            "QFrame { background: palette(alternate-base); border-radius: 6px; padding: 6px; }"
+            "QFrame { background: palette(alternate-base); border-radius: 6px; padding: 4px; }"
         )
         layout = QVBoxLayout(frame)
-        layout.setSpacing(6)
-        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(4)
+        layout.setContentsMargins(6, 3, 6, 3)
 
         title = QLabel("<b>Unique Word Lengths</b>")
-        title.setFont(QFont("Microsoft YaHei", 10))
+        title.setFont(QFont("Microsoft YaHei", 9))
         layout.addWidget(title)
 
         row = QHBoxLayout()
-        row.setSpacing(12)
+        row.setSpacing(8)
         for bucket in ("1", "2", "3", "4+"):
             info = buckets[bucket]
             row.addWidget(self._make_small_card(
@@ -1000,10 +1001,10 @@ class AnalysisDialog(QDialog):
         summary = QFrame()
         summary.setFrameShape(QFrame.Shape.StyledPanel)
         summary.setStyleSheet(
-            "QFrame { background: palette(alternate-base); border-radius: 6px; padding: 8px; }"
+            "QFrame { background: palette(alternate-base); border-radius: 6px; padding: 5px; }"
         )
         summary_layout = QVBoxLayout(summary)
-        summary_layout.setSpacing(6)
+        summary_layout.setSpacing(4)
 
         info_label = QLabel(
             f"<b style='font-family: Microsoft YaHei;'>Anki Deck Analysis ({self._unit_singular()})</b>"
@@ -1014,7 +1015,7 @@ class AnalysisDialog(QDialog):
         summary_layout.addWidget(info_label)
 
         cards = QHBoxLayout()
-        cards.setSpacing(12)
+        cards.setSpacing(8)
         cards.addWidget(self._make_card("Text Coverage", f"{coverage_pct:.1f}%"))
         cards.addWidget(self._make_card("Known Unique", f"{len(known_in_book):,} / {len(book_unique):,}"))
         cards.addWidget(self._make_card("Unknown Unique", f"{len(unknown_in_book):,}"))
@@ -1079,14 +1080,14 @@ class AnalysisDialog(QDialog):
         card = QFrame()
         card.setFrameShape(QFrame.Shape.StyledPanel)
         card.setStyleSheet(
-            "QFrame { background: palette(alternate-base); border-radius: 6px; padding: 6px; }"
+            "QFrame { background: palette(alternate-base); border-radius: 6px; padding: 4px; }"
         )
         layout = QVBoxLayout(card)
-        layout.setSpacing(2)
-        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setSpacing(1)
+        layout.setContentsMargins(8, 4, 8, 4)
 
         value_label = QLabel(value)
-        font = QFont("Segoe UI", 20, QFont.Weight.DemiBold)
+        font = QFont("Segoe UI", 16, QFont.Weight.DemiBold)
         font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
         value_label.setFont(font)
         value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1094,7 +1095,7 @@ class AnalysisDialog(QDialog):
 
         text_label = QLabel(label)
         text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text_label.setStyleSheet("color: gray; font-size: 9pt;")
+        text_label.setStyleSheet("color: gray; font-size: 8pt;")
         layout.addWidget(text_label)
         return card
 
@@ -1102,42 +1103,42 @@ class AnalysisDialog(QDialog):
         card = QFrame()
         card.setFrameShape(QFrame.Shape.StyledPanel)
         card.setStyleSheet(
-            "QFrame { background: palette(base); border-radius: 6px; padding: 6px; }"
+            "QFrame { background: palette(base); border-radius: 6px; padding: 4px; }"
         )
         layout = QVBoxLayout(card)
-        layout.setSpacing(2)
-        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(1)
+        layout.setContentsMargins(6, 4, 6, 4)
 
         value_label = QLabel(value)
         value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        value_label.setFont(QFont("Segoe UI", 14, QFont.Weight.DemiBold))
+        value_label.setFont(QFont("Segoe UI", 12, QFont.Weight.DemiBold))
         layout.addWidget(value_label)
 
         label_widget = QLabel(label)
         label_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label_widget.setStyleSheet("color: gray; font-size: 9pt;")
+        label_widget.setStyleSheet("color: gray; font-size: 8pt;")
         layout.addWidget(label_widget)
 
         pct_label = QLabel(pct)
         pct_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        pct_label.setStyleSheet("color: gray; font-size: 8.5pt;")
+        pct_label.setStyleSheet("color: gray; font-size: 7.5pt;")
         layout.addWidget(pct_label)
         return card
 
     def _build_coverage_row(self, label_text, pct, color):
         row = QHBoxLayout()
-        row.setSpacing(8)
+        row.setSpacing(6)
 
         label = QLabel(label_text)
-        label.setFixedWidth(115)
-        label.setFont(QFont("Microsoft YaHei", 9))
+        label.setFixedWidth(96)
+        label.setFont(QFont("Microsoft YaHei", 8))
         row.addWidget(label)
 
         bar = QProgressBar()
         bar.setRange(0, 1000)
         bar.setValue(int(pct * 10))
         bar.setTextVisible(False)
-        bar.setFixedHeight(18)
+        bar.setFixedHeight(14)
         bar.setStyleSheet(
             "QProgressBar { border: 1px solid palette(mid); border-radius: 5px; background: palette(base); }"
             f"QProgressBar::chunk {{ background: {color}; border-radius: 4px; }}"
@@ -1145,8 +1146,8 @@ class AnalysisDialog(QDialog):
         row.addWidget(bar, stretch=1)
 
         pct_label = QLabel(f"{pct:.1f}%")
-        pct_label.setFixedWidth(65)
-        pct_label.setFont(QFont("Microsoft YaHei", 9, QFont.Weight.Bold))
+        pct_label.setFixedWidth(56)
+        pct_label.setFont(QFont("Microsoft YaHei", 8, QFont.Weight.Bold))
         row.addWidget(pct_label)
         return row
 

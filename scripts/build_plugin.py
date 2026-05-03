@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_NAME = "ChineseCharacterAnalyzer-Calibre-Plugin"
 FILES_TO_PACKAGE = [
     "__init__.py",
+    "analysis_cache.py",
     "analyzer.py",
     "anki_connect.py",
     "anki_parser.py",

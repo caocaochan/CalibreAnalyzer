@@ -329,7 +329,7 @@ class AnalysisDialog(QDialog):
         self._word_analysis_worker.finished.connect(self._word_analysis_thread.quit)
         self._word_analysis_worker.failed.connect(self._word_analysis_thread.quit)
         self._word_analysis_thread.finished.connect(self._word_analysis_worker.deleteLater)
-        self._word_analysis_thread.finished.connect(self._word_analysis_thread.deleteLater)
+        self._word_analysis_thread.finished.connect(self._on_word_analysis_thread_finished)
         self._word_analysis_thread.start()
 
     def _on_word_analysis_progress(self, status):
@@ -365,6 +365,10 @@ class AnalysisDialog(QDialog):
         self.mode_combo.blockSignals(False)
         self.mode = "character"
         self._refresh_mode_ui()
+
+    def _on_word_analysis_thread_finished(self):
+        self._word_analysis_thread = None
+        self._word_analysis_worker = None
 
     def _confirm_word_runtime_download(self, asset, platform_key):
         from calibre.gui2 import question_dialog
@@ -1197,9 +1201,18 @@ class AnalysisDialog(QDialog):
                 widget.deleteLater()
 
     def _shutdown_word_analysis_thread(self):
-        if self._word_analysis_thread is not None and self._word_analysis_thread.isRunning():
-            self._word_analysis_thread.quit()
-            self._word_analysis_thread.wait()
+        thread = self._word_analysis_thread
+        if thread is None:
+            return
+        try:
+            if thread.isRunning():
+                thread.quit()
+                thread.wait()
+        except RuntimeError:
+            pass
+        finally:
+            self._word_analysis_thread = None
+            self._word_analysis_worker = None
 
 
 class _FieldChooserDialog(QDialog):

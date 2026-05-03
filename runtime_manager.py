@@ -9,6 +9,7 @@ directory on first use.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import os
 import pkgutil
@@ -191,6 +192,28 @@ def ensure_word_runtime(parent=None, allow_download=False):
     install_dir = get_runtime_install_dir(platform_key)
     if runtime_is_installed(platform_key):
         _activate_runtime_path(install_dir)
+        try:
+            _validate_runtime_import(install_dir)
+        except WordRuntimeError:
+            if not allow_download:
+                raise
+            if not _manifest_ready(asset):
+                raise WordRuntimeError(
+                    "The installed word-mode runtime is broken, and this plugin "
+                    "build does not include a replacement runtime asset yet."
+                )
+
+            reporter = _ProgressReporter(parent) if parent is not None else None
+            try:
+                _clear_runtime_modules(("pkuseg", "numpy"))
+                shutil.rmtree(install_dir, ignore_errors=True)
+                _install_runtime(asset, platform_key, install_dir, reporter)
+                _activate_runtime_path(install_dir)
+                _validate_runtime_import(install_dir)
+            finally:
+                if reporter is not None:
+                    reporter.close()
+
         _prune_old_runtime_versions(keep_version=RUNTIME_VERSION)
         return install_dir
 
@@ -209,6 +232,12 @@ def ensure_word_runtime(parent=None, allow_download=False):
     try:
         _install_runtime(asset, platform_key, install_dir, reporter)
         _activate_runtime_path(install_dir)
+        try:
+            _validate_runtime_import(install_dir)
+        except WordRuntimeError:
+            _clear_runtime_modules(("pkuseg", "numpy"))
+            shutil.rmtree(install_dir, ignore_errors=True)
+            raise
         _prune_old_runtime_versions(keep_version=RUNTIME_VERSION)
         return install_dir
     finally:
@@ -238,6 +267,29 @@ def _activate_runtime_path(install_dir):
         )
     if install_dir not in sys.path:
         sys.path.insert(0, install_dir)
+
+
+def _validate_runtime_import(install_dir):
+    importlib.invalidate_caches()
+    try:
+        importlib.import_module("pkuseg")
+    except Exception as e:
+        detail = type(e).__name__
+        if str(e):
+            detail = f"{detail}: {e}"
+        raise WordRuntimeError(
+            "The installed word-mode runtime could not be imported. "
+            f"Please retry setup. Import failed with {detail}."
+        ) from e
+
+
+def _clear_runtime_modules(prefixes):
+    prefixes = tuple(prefixes)
+    for name in list(sys.modules):
+        for prefix in prefixes:
+            if name == prefix or name.startswith(f"{prefix}."):
+                sys.modules.pop(name, None)
+                break
 
 
 def _install_runtime(asset, platform_key, install_dir, reporter=None):

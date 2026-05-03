@@ -173,8 +173,10 @@ class PkusegSegmenter:
             try:
                 import pkuseg
             except ImportError as e:
+                detail = f" ({e})" if str(e) else ""
                 raise SegmentationError(
-                    "Word mode runtime is installed, but 'pkuseg' could not be imported."
+                    "Word mode runtime is installed, but 'pkuseg' could not be "
+                    f"imported{detail}."
                 ) from e
 
             try:

@@ -37,6 +37,17 @@ HSK_LEVELS = {
 HSK_LEVEL_ORDER = ["1", "2", "3", "4", "5", "6", "7-9"]
 
 
+def _load_char_level_map():
+    mapping = {}
+    for level in HSK_LEVEL_ORDER:
+        for char in HSK_LEVELS[level]:
+            mapping[char] = level
+    return mapping
+
+
+HSK_CHAR_TO_LEVEL = _load_char_level_map()
+
+
 def hsk_coverage(unique_chars):
     """
     Given a set/list of unique characters from a book, return a dict mapping

@@ -82,11 +82,13 @@ class ChineseAnalyzerAction(InterfaceAction):
         authors = db.field_for("authors", book_id)
         author_str = ", ".join(authors) if authors else "Unknown"
 
+        from calibre_plugins.chinese_character_analyzer.analysis_cache import build_analysis_key
         from calibre_plugins.chinese_character_analyzer.analyzer import analyze_characters
         stats = analyze_characters(text)
+        analysis_key = build_analysis_key(text, chosen_fmt)
 
         from calibre_plugins.chinese_character_analyzer.dialog import AnalysisDialog
-        dlg = AnalysisDialog(self.gui, title, author_str, chosen_fmt, text, stats)
+        dlg = AnalysisDialog(self.gui, title, author_str, chosen_fmt, text, stats, analysis_key=analysis_key)
         dlg.exec()
 
     def _extract_text(self, db, book_id, fmt):

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import shutil
 import tempfile
@@ -97,12 +96,9 @@ def main():
         patch_init_version(staging_dir / "__init__.py", version_tuple)
 
         versioned_zip = output_dir / f"{PLUGIN_NAME}-v{args.version}.zip"
-        generic_zip = output_dir / f"{PLUGIN_NAME}.zip"
         build_zip(staging_dir, versioned_zip)
-        shutil.copy2(versioned_zip, generic_zip)
 
         print(versioned_zip)
-        print(generic_zip)
 
 
 if __name__ == "__main__":

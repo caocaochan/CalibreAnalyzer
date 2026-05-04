@@ -2,6 +2,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -114,6 +115,45 @@ class AnalysisCacheTests(unittest.TestCase):
         self.assertEqual(
             analyzer.filter_word_tokens(tokens),
             ["今天", "abc中", "图书馆"],
+        )
+
+    def test_create_word_segmenter_selects_backend_class(self):
+        self.assertIsInstance(
+            analyzer.create_word_segmenter("jieba"),
+            analyzer.JiebaSegmenter,
+        )
+        self.assertIsInstance(
+            analyzer.create_word_segmenter("pkuseg"),
+            analyzer.PkusegSegmenter,
+        )
+
+    def test_default_word_segmenter_tracks_configured_backend(self):
+        analyzer._DEFAULT_WORD_SEGMENTER = None
+        analyzer._DEFAULT_WORD_SEGMENTER_BACKEND = None
+
+        with mock.patch.object(analyzer, "_get_word_backend_name", return_value="jieba"):
+            segmenter = analyzer.get_default_word_segmenter()
+            self.assertIsInstance(segmenter, analyzer.JiebaSegmenter)
+
+        analyzer._DEFAULT_WORD_SEGMENTER = None
+        analyzer._DEFAULT_WORD_SEGMENTER_BACKEND = None
+
+        with mock.patch.object(analyzer, "_get_word_backend_name", return_value="pkuseg"):
+            segmenter = analyzer.get_default_word_segmenter()
+            self.assertIsInstance(segmenter, analyzer.PkusegSegmenter)
+
+    def test_jieba_segmenter_produces_valid_word_stats(self):
+        text = "我们一起学习中文123abc。今天也去图书馆。"
+        stats = analyzer.analyze_words(
+            text,
+            segmenter=analyzer.JiebaSegmenter(),
+        )
+
+        self.assertGreater(stats["total_words"], 0)
+        self.assertGreater(stats["unique_count"], 0)
+        self.assertTrue(stats["unique_words"])
+        self.assertTrue(
+            all(analyzer.contains_cjk_ideograph(token) for token in stats["unique_words"])
         )
 
 

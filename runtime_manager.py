@@ -1,9 +1,9 @@
 """
-Helpers for installing and activating the optional pkuseg runtime.
+Helpers for selecting and activating the word-segmentation backend.
 
-The plugin ZIP carries platform-specific runtime archives so word mode works
-offline; the matching runtime is extracted into the user's Calibre config
-directory on first use.
+Windows and Linux use the bundled pkuseg runtime, extracted into the user's
+Calibre config directory on first use. macOS uses the vendored pure-Python
+jieba backend and requires no setup.
 """
 
 from __future__ import annotations
@@ -25,36 +25,22 @@ from calibre.utils.config import config_dir
 
 PLUGIN_IMPORT_NAME = "chinese_character_analyzer"
 PACKAGE_NAME = "calibre_plugins.chinese_character_analyzer"
-RUNTIME_VERSION = "2026.05.03.1"
+PKUSEG_RUNTIME_VERSION = "2026.05.03.1"
+JIEBA_VERSION = "0.46.12"
+RUNTIME_VERSION = PKUSEG_RUNTIME_VERSION
 
 # Ready-to-import ZIP assets bundled inside the plugin package.
 RUNTIME_ASSETS = {
     "windows-x86_64-py314": {
-        "version": RUNTIME_VERSION,
+        "version": PKUSEG_RUNTIME_VERSION,
         "filename": "pkuseg-runtime-windows-x86_64-py314.zip",
         "resource_path": "runtime_assets/pkuseg-runtime-windows-x86_64-py314.zip",
         "sha256": "f2758571603392ef14b6833d072c098ad815876442e4eb187f05b8202995d615",
         "size": 56409165,
         "packages": ["numpy==2.4.4", "pkuseg==0.0.12"],
     },
-    "macos-x86_64-py314": {
-        "version": RUNTIME_VERSION,
-        "filename": "pkuseg-runtime-macos-x86_64-py314.zip",
-        "resource_path": "runtime_assets/pkuseg-runtime-macos-x86_64-py314.zip",
-        "sha256": "2fde3eae7e1a9188c9281c66a8289905b7a87c690b1613adc800361adf572f47",
-        "size": 60780668,
-        "packages": ["numpy==2.4.4", "pkuseg==0.0.12"],
-    },
-    "macos-arm64-py314": {
-        "version": RUNTIME_VERSION,
-        "filename": "pkuseg-runtime-macos-arm64-py314.zip",
-        "resource_path": "runtime_assets/pkuseg-runtime-macos-arm64-py314.zip",
-        "sha256": "ebae6d79d9cef322008dd42160195ac6447e3c9dedad8194cebf8fe64d6cd32f",
-        "size": 58801229,
-        "packages": ["numpy==2.4.4", "pkuseg==0.0.12"],
-    },
     "linux-x86_64-py314": {
-        "version": RUNTIME_VERSION,
+        "version": PKUSEG_RUNTIME_VERSION,
         "filename": "pkuseg-runtime-linux-x86_64-py314.zip",
         "resource_path": "runtime_assets/pkuseg-runtime-linux-x86_64-py314.zip",
         "sha256": "98148c3095476b86f7d4429cd121327cfb4863f58d646da58f36bba28b7f62e7",
@@ -152,6 +138,28 @@ def get_runtime_asset(platform_key=None):
     return RUNTIME_ASSETS.get(platform_key)
 
 
+def get_word_backend_name(platform_key=None):
+    """Return the configured word segmentation backend for a runtime key."""
+    if platform_key is None:
+        platform_key = current_platform_key()
+    if platform_key.startswith("macos-"):
+        return "jieba"
+    return "pkuseg"
+
+
+def get_word_runtime_version(platform_key=None):
+    """Return the cache/runtime version token for the configured backend."""
+    backend_name = get_word_backend_name(platform_key)
+    if backend_name == "jieba":
+        return f"jieba-{JIEBA_VERSION}"
+    return f"pkuseg-{PKUSEG_RUNTIME_VERSION}"
+
+
+def word_mode_requires_setup(platform_key=None):
+    """Return True when the current backend needs one-time runtime extraction."""
+    return get_word_backend_name(platform_key) == "pkuseg"
+
+
 def get_runtime_root():
     return os.path.join(config_dir, "plugins", PLUGIN_IMPORT_NAME, "runtime")
 
@@ -159,16 +167,20 @@ def get_runtime_root():
 def get_runtime_install_dir(platform_key=None):
     if platform_key is None:
         platform_key = current_platform_key()
-    return os.path.join(get_runtime_root(), RUNTIME_VERSION, platform_key)
+    return os.path.join(get_runtime_root(), PKUSEG_RUNTIME_VERSION, platform_key)
 
 
 def runtime_is_installed(platform_key=None):
     """Return True if the current runtime exists and has a completion marker."""
+    if not word_mode_requires_setup(platform_key):
+        return True
     return os.path.isfile(_marker_path(get_runtime_install_dir(platform_key)))
 
 
 def runtime_download_available(platform_key=None):
     """Return True if this build has a usable bundled runtime entry."""
+    if not word_mode_requires_setup(platform_key):
+        return True
     asset = get_runtime_asset(platform_key)
     return bool(asset and _manifest_ready(asset))
 
@@ -182,6 +194,9 @@ def ensure_word_runtime(parent=None, allow_download=False):
     confirms the one-time setup.
     """
     platform_key = current_platform_key()
+    if not word_mode_requires_setup(platform_key):
+        return None
+
     asset = get_runtime_asset(platform_key)
     if asset is None:
         raise WordRuntimeError(
@@ -214,7 +229,7 @@ def ensure_word_runtime(parent=None, allow_download=False):
                 if reporter is not None:
                     reporter.close()
 
-        _prune_old_runtime_versions(keep_version=RUNTIME_VERSION)
+        _prune_old_runtime_versions(keep_version=PKUSEG_RUNTIME_VERSION)
         return install_dir
 
     if not allow_download:
@@ -238,7 +253,7 @@ def ensure_word_runtime(parent=None, allow_download=False):
             _clear_runtime_modules(("pkuseg", "numpy"))
             shutil.rmtree(install_dir, ignore_errors=True)
             raise
-        _prune_old_runtime_versions(keep_version=RUNTIME_VERSION)
+        _prune_old_runtime_versions(keep_version=PKUSEG_RUNTIME_VERSION)
         return install_dir
     finally:
         if reporter is not None:

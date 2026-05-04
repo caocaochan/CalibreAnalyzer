@@ -18,6 +18,7 @@ FILES_TO_PACKAGE = [
     "anki_parser.py",
     "dialog.py",
     "hsk_data.py",
+    "jieba",
     "runtime_manager.py",
     "ui.py",
     "plugin-import-name-chinese_character_analyzer.txt",

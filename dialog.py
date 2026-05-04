@@ -100,12 +100,21 @@ class _WordAnalysisWorker(QObject):
                 load_word_analysis, save_word_analysis,
             )
             from calibre_plugins.chinese_character_analyzer.analyzer import (
-                PkusegSegmenter, analyze_words, hydrate_cached_word_analysis,
+                analyze_words, get_default_word_segmenter,
+                hydrate_cached_word_analysis,
             )
-            from calibre_plugins.chinese_character_analyzer.runtime_manager import RUNTIME_VERSION
+            from calibre_plugins.chinese_character_analyzer.runtime_manager import (
+                get_word_runtime_version,
+            )
+
+            runtime_version = get_word_runtime_version()
 
             self.progress.emit("cache_lookup")
-            cached = load_word_analysis(self.analysis_key, self.book_format, RUNTIME_VERSION)
+            cached = load_word_analysis(
+                self.analysis_key,
+                self.book_format,
+                runtime_version,
+            )
             if cached is not None:
                 self.progress.emit("ready")
                 self.finished.emit({
@@ -114,13 +123,18 @@ class _WordAnalysisWorker(QObject):
                 })
                 return
 
-            segmenter = PkusegSegmenter()
+            segmenter = get_default_word_segmenter()
             stats = analyze_words(
                 self.book_text,
                 segmenter=segmenter,
                 progress_callback=self.progress.emit,
             )
-            save_word_analysis(self.analysis_key, self.book_format, RUNTIME_VERSION, stats)
+            save_word_analysis(
+                self.analysis_key,
+                self.book_format,
+                runtime_version,
+                stats,
+            )
             self.progress.emit("ready")
             self.finished.emit({
                 "cache_hit": False,
@@ -276,10 +290,10 @@ class AnalysisDialog(QDialog):
         from calibre_plugins.chinese_character_analyzer.runtime_manager import (
             WordRuntimeCancelled, WordRuntimeError, current_platform_key,
             ensure_word_runtime, get_runtime_asset, runtime_download_available,
-            runtime_is_installed,
+            runtime_is_installed, word_mode_requires_setup,
         )
 
-        if not runtime_is_installed():
+        if word_mode_requires_setup() and not runtime_is_installed():
             asset = get_runtime_asset()
             if asset is None:
                 from calibre.gui2 import error_dialog

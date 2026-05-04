@@ -50,8 +50,50 @@ class RuntimeManagerTests(unittest.TestCase):
 
         self.assertIn("ImportError: dlopen failed: missing symbol", str(ctx.exception))
 
-    def test_ensure_word_runtime_reinstalls_broken_runtime_when_allowed(self):
+    def test_macos_uses_jieba_without_setup(self):
         platform_key = "macos-arm64-py314"
+
+        self.assertEqual(
+            self.runtime_manager.get_word_backend_name(platform_key),
+            "jieba",
+        )
+        self.assertEqual(
+            self.runtime_manager.get_word_runtime_version(platform_key),
+            f"jieba-{self.runtime_manager.JIEBA_VERSION}",
+        )
+        self.assertFalse(self.runtime_manager.word_mode_requires_setup(platform_key))
+        self.assertTrue(self.runtime_manager.runtime_is_installed(platform_key))
+        self.assertTrue(self.runtime_manager.runtime_download_available(platform_key))
+
+        with mock.patch.object(
+            self.runtime_manager, "current_platform_key", return_value=platform_key
+        ), mock.patch.object(
+            self.runtime_manager, "_install_runtime"
+        ) as install_runtime:
+            result = self.runtime_manager.ensure_word_runtime(
+                parent=None,
+                allow_download=True,
+            )
+
+        self.assertIsNone(result)
+        install_runtime.assert_not_called()
+
+    def test_windows_uses_pkuseg_with_setup(self):
+        platform_key = "windows-x86_64-py314"
+
+        self.assertEqual(
+            self.runtime_manager.get_word_backend_name(platform_key),
+            "pkuseg",
+        )
+        self.assertEqual(
+            self.runtime_manager.get_word_runtime_version(platform_key),
+            f"pkuseg-{self.runtime_manager.PKUSEG_RUNTIME_VERSION}",
+        )
+        self.assertTrue(self.runtime_manager.word_mode_requires_setup(platform_key))
+        self.assertIsNotNone(self.runtime_manager.get_runtime_asset(platform_key))
+
+    def test_ensure_word_runtime_reinstalls_broken_runtime_when_allowed(self):
+        platform_key = "windows-x86_64-py314"
         asset = self.runtime_manager.get_runtime_asset(platform_key)
         install_dir = "/tmp/fake-runtime"
 
@@ -91,11 +133,11 @@ class RuntimeManagerTests(unittest.TestCase):
         rmtree.assert_called_once_with(install_dir, ignore_errors=True)
         install_runtime.assert_called_once_with(asset, platform_key, install_dir, None)
         prune_versions.assert_called_once_with(
-            keep_version=self.runtime_manager.RUNTIME_VERSION
+            keep_version=self.runtime_manager.PKUSEG_RUNTIME_VERSION
         )
 
     def test_ensure_word_runtime_does_not_reinstall_without_permission(self):
-        platform_key = "macos-arm64-py314"
+        platform_key = "windows-x86_64-py314"
         install_dir = "/tmp/fake-runtime"
 
         with mock.patch.object(
@@ -122,7 +164,7 @@ class RuntimeManagerTests(unittest.TestCase):
         install_runtime.assert_not_called()
 
     def test_fresh_install_cleans_up_if_runtime_still_cannot_import(self):
-        platform_key = "macos-arm64-py314"
+        platform_key = "windows-x86_64-py314"
         asset = self.runtime_manager.get_runtime_asset(platform_key)
         install_dir = "/tmp/fake-runtime"
 

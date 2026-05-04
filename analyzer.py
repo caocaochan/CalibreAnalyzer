@@ -4,6 +4,7 @@ Identifies Chinese characters, segments Chinese words, and computes stats.
 """
 
 from collections import Counter
+import logging
 
 
 class SegmentationError(RuntimeError):
@@ -192,13 +193,67 @@ class PkusegSegmenter:
         return self._get_segmenter().cut(text)
 
 
+class JiebaSegmenter:
+    """Lazy wrapper around jieba for pure-Python macOS word segmentation."""
+
+    def __init__(self):
+        self._segmenter = None
+
+    def _get_segmenter(self):
+        if self._segmenter is None:
+            try:
+                import jieba
+            except ImportError as e:
+                detail = f" ({e})" if str(e) else ""
+                raise SegmentationError(
+                    "Word mode backend 'jieba' could not be imported"
+                    f"{detail}."
+                ) from e
+
+            jieba.setLogLevel(logging.ERROR)
+            self._segmenter = jieba
+
+        return self._segmenter
+
+    def segment(self, text):
+        return self._get_segmenter().lcut(text, HMM=True)
+
+
 _DEFAULT_WORD_SEGMENTER = None
+_DEFAULT_WORD_SEGMENTER_BACKEND = None
+
+
+def _get_word_backend_name():
+    try:
+        from calibre_plugins.chinese_character_analyzer.runtime_manager import (
+            get_word_backend_name,
+        )
+    except ImportError:
+        from runtime_manager import get_word_backend_name
+    return get_word_backend_name()
+
+
+def create_word_segmenter(backend_name=None):
+    """Create a segmenter for the configured word-mode backend."""
+    if backend_name is None:
+        backend_name = _get_word_backend_name()
+
+    if backend_name == "pkuseg":
+        return PkusegSegmenter()
+    if backend_name == "jieba":
+        return JiebaSegmenter()
+    raise SegmentationError(f"Unsupported word segmentation backend: {backend_name}")
 
 
 def get_default_word_segmenter():
-    global _DEFAULT_WORD_SEGMENTER
-    if _DEFAULT_WORD_SEGMENTER is None:
-        _DEFAULT_WORD_SEGMENTER = PkusegSegmenter()
+    global _DEFAULT_WORD_SEGMENTER, _DEFAULT_WORD_SEGMENTER_BACKEND
+    backend_name = _get_word_backend_name()
+    if (
+        _DEFAULT_WORD_SEGMENTER is None
+        or _DEFAULT_WORD_SEGMENTER_BACKEND != backend_name
+    ):
+        _DEFAULT_WORD_SEGMENTER = create_word_segmenter(backend_name)
+        _DEFAULT_WORD_SEGMENTER_BACKEND = backend_name
     return _DEFAULT_WORD_SEGMENTER
 
 

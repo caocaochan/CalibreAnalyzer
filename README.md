@@ -16,6 +16,10 @@ Release versions use the format:
 
 ## Development
 
-The plugin bundles platform-specific word-mode runtimes in `runtime_assets/`.
-Those archives are extracted on first use of Word mode so end users do not need
-an external download.
+Word mode uses mixed backends:
+
+- macOS bundles a vendored pure-Python `jieba` backend with no setup step
+- Windows and Linux bundle platform-specific `pkuseg` runtimes in `runtime_assets/`
+
+The native runtime archives are extracted on first use of Word mode so end
+users do not need an external download.

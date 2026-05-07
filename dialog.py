@@ -256,9 +256,9 @@ class AnalysisDialog(QDialog):
 
         btn_layout.addStretch()
 
-        export_btn = QPushButton("Export to CSV…")
-        export_btn.clicked.connect(self._export_csv)
-        btn_layout.addWidget(export_btn)
+        self.export_btn = QPushButton("Export to CSV…")
+        self.export_btn.clicked.connect(self._export_csv)
+        btn_layout.addWidget(self.export_btn)
 
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.close)
@@ -266,6 +266,7 @@ class AnalysisDialog(QDialog):
         layout.addLayout(btn_layout)
 
         self._refresh_mode_ui()
+        self._update_export_button_state()
 
     # ── Mode switching ──────────────────────────────────────────────────
 
@@ -358,6 +359,7 @@ class AnalysisDialog(QDialog):
         self._word_analysis_status = status
         self._refresh_stats_panel()
         self._update_word_overview_message()
+        self._update_export_button_state()
 
     def _on_word_analysis_finished(self, result):
         self._word_analysis_active = False
@@ -370,6 +372,7 @@ class AnalysisDialog(QDialog):
             self._update_tab_labels()
             self._update_word_overview_message()
             self._ensure_current_tab_built()
+        self._update_export_button_state()
 
     def _on_word_analysis_failed(self, message):
         self._word_analysis_active = False
@@ -387,6 +390,7 @@ class AnalysisDialog(QDialog):
         self.mode_combo.blockSignals(False)
         self.mode = "character"
         self._refresh_mode_ui()
+        self._update_export_button_state()
 
     def _on_word_analysis_thread_finished(self):
         self._word_analysis_thread = None
@@ -419,6 +423,7 @@ class AnalysisDialog(QDialog):
     def _refresh_mode_ui(self):
         self._refresh_stats_panel()
         self._setup_tabs()
+        self._update_export_button_state()
 
     def _refresh_stats_panel(self):
         self._clear_layout(self.stats_layout)
@@ -534,6 +539,21 @@ class AnalysisDialog(QDialog):
         if self.mode == "word":
             return self.word_stats
         return self.character_stats
+
+    def _can_export_current_mode(self):
+        return self.mode != "word" or self.word_stats is not None
+
+    def _update_export_button_state(self):
+        if not hasattr(self, "export_btn"):
+            return
+        enabled = self._can_export_current_mode()
+        self.export_btn.setEnabled(enabled)
+        if enabled:
+            self.export_btn.setToolTip("")
+        else:
+            self.export_btn.setToolTip(
+                "Export becomes available after word analysis finishes."
+            )
 
     def _current_hsk(self):
         if self.mode == "word":
@@ -1176,6 +1196,16 @@ class AnalysisDialog(QDialog):
         return f"HSK {level}" if level != "—" else "—"
 
     def _export_csv(self):
+        if not self._can_export_current_mode():
+            from calibre.gui2 import error_dialog
+            error_dialog(
+                self,
+                "Export Unavailable",
+                "Word analysis is still running. Please wait until it finishes before exporting.",
+                show=True,
+            )
+            return
+
         filename = (
             f"{self.book_title}_chinese_words.csv"
             if self.mode == "word"

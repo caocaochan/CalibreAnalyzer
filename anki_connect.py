@@ -236,7 +236,7 @@ def get_all_field_names(deck_names_list, url=_DEFAULT_URL):
     query = build_query(deck_names_list)
     note_ids = find_notes(query, url=url)
     if not note_ids:
-        return [], []
+        return [], [], 0
 
     # Fetch a sample for preview + all unique model field names
     sample_ids = note_ids[:20]

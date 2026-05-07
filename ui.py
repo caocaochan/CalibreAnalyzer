@@ -91,6 +91,14 @@ class ChineseAnalyzerAction(InterfaceAction):
         dlg = AnalysisDialog(self.gui, title, author_str, chosen_fmt, text, stats, analysis_key=analysis_key)
         dlg.exec()
 
+    def _decode_text_bytes(self, raw):
+        for encoding in ("utf-8", "gb18030", "gbk", "gb2312", "big5"):
+            try:
+                return raw.decode(encoding)
+            except (UnicodeDecodeError, LookupError):
+                continue
+        return raw.decode("utf-8", errors="replace")
+
     def _extract_text(self, db, book_id, fmt):
         """Extract plain text from a book format."""
         import os
@@ -108,13 +116,7 @@ class ChineseAnalyzerAction(InterfaceAction):
 
         try:
             if fmt == "TXT":
-                # Plain text — just decode
-                for encoding in ("utf-8", "gb18030", "gbk", "gb2312", "big5"):
-                    try:
-                        return raw.decode(encoding)
-                    except (UnicodeDecodeError, LookupError):
-                        continue
-                return raw.decode("utf-8", errors="replace")
+                return self._decode_text_bytes(raw)
 
             elif fmt in ("EPUB", "AZW3", "MOBI", "HTMLZ"):
                 return self._extract_via_calibre(tmp_path, fmt)
@@ -122,7 +124,7 @@ class ChineseAnalyzerAction(InterfaceAction):
             elif fmt in ("HTML", "HTM"):
                 from calibre.utils.cleantext import clean_ascii_chars
                 from calibre.ebooks.BeautifulSoup import BeautifulSoup
-                html = raw.decode("utf-8", errors="replace")
+                html = self._decode_text_bytes(raw)
                 soup = BeautifulSoup(html)
                 return soup.get_text()
 
